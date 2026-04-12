@@ -1,0 +1,48 @@
+{
+  "name": "orders-bullmq",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc",
+    "docker:up": "docker compose -f orders-bullmq-docker/docker-compose.yml up -d",
+    "docker:down": "docker compose -f orders-bullmq-docker/docker-compose.yml down",
+    "docker:nuke": "docker compose -f orders-bullmq-docker/docker-compose.yml down -v && docker compose -f orders-bullmq-docker/docker-compose.yml up -d --build",
+    "docker:rebuild": "docker compose -f orders-bullmq-docker/docker-compose.yml up -d --build app",
+    "logs": "docker compose -f orders-bullmq-docker/docker-compose.yml logs app -f",
+    "pm2:start": "docker compose -f orders-bullmq-docker/docker-compose.yml exec app npx pm2 start pm2.json",
+    "pm2:stop": "docker compose -f orders-bullmq-docker/docker-compose.yml exec app npx pm2 stop pm2.json",
+    "pm2:list": "docker compose -f orders-bullmq-docker/docker-compose.yml exec app npx pm2 list",
+    "pm2:logs": "docker compose -f orders-bullmq-docker/docker-compose.yml exec app npx pm2 logs",
+    "pm2:restart": "docker compose -f orders-bullmq-docker/docker-compose.yml exec app npx pm2 restart pm2.json"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@agendajs/mongo-backend": "^4.0.1",
+    "@aws-sdk/client-sns": "^3.1026.0",
+    "@aws-sdk/client-sqs": "^3.1026.0",
+    "@bull-board/api": "^6.21.0",
+    "@bull-board/express": "^6.21.0",
+    "@faker-js/faker": "^10.4.0",
+    "@types/express": "^5.0.6",
+    "agenda": "^6.2.4",
+    "better-sqlite3": "^12.8.0",
+    "bullmq": "^5.73.1",
+    "cron-parser": "^5.5.0",
+    "dotenv": "^17.4.1",
+    "express": "^5.2.1",
+    "ioredis": "^5.10.1",
+    "mongoose": "^9.4.1",
+    "pm2": "^6.0.14",
+    "toad-scheduler": "^3.1.0",
+    "ts-node": "^10.9.2"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/ioredis": "^4.28.10",
+    "@types/node": "^25.5.2",
+    "typescript": "^5.9.3"
+  }
+}

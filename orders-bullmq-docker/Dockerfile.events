@@ -1,0 +1,16 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+COPY event-service/package*.json ./
+RUN npm install
+
+COPY models/ ./models/
+COPY event-service/server.ts ./event-service/
+COPY event-service/tsconfig.json ./event-service/
+
+RUN cd event-service && npx tsc
+
+RUN mkdir -p /app/data
+
+CMD ["node", "event-service/dist/event-service/server.js"]

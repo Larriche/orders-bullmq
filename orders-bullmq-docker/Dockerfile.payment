@@ -1,0 +1,10 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+COPY fake-payment-service/package*.json ./
+RUN npm install
+
+COPY fake-payment-service/server.js ./
+
+CMD ["node", "server.js"]

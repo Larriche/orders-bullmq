@@ -1,0 +1,106 @@
+services:
+  redis:
+    image: redis:latest
+    container_name: dev-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+
+
+  mongodb1:
+    image: mongo:latest
+    container_name: dev-mongodb1
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=root
+      - MONGO_INITDB_ROOT_PASSWORD=example
+      - MONGO_INITDB_REPLICA_SET_NAME=rs0
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all", "--keyFile", "/etc/mongo-keyfile"]
+    volumes:
+      - mongo1-data:/data/db
+      - ./mongo-keyfile:/etc/mongo-keyfile:ro
+    restart: unless-stopped
+
+  mongodb2:
+    image: mongo:latest
+    container_name: dev-mongodb2
+    ports:
+      - "27018:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=root
+      - MONGO_INITDB_ROOT_PASSWORD=example
+      - MONGO_INITDB_REPLICA_SET_NAME=rs0
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all", "--keyFile", "/etc/mongo-keyfile"]
+    volumes:
+      - mongo2-data:/data/db
+      - ./mongo-keyfile:/etc/mongo-keyfile:ro
+    restart: unless-stopped
+
+  mongo-init-replica:
+    image: mongo:latest
+    container_name: mongo-init-replica
+    depends_on:
+      - mongodb1
+      - mongodb2
+    entrypoint: ["bash", "/init-replica.sh"]
+    volumes:
+      - ./init-replica.sh:/init-replica.sh:ro
+    restart: "no"
+
+  app:
+    build:
+      context: ..
+      dockerfile: orders-bullmq-docker/Dockerfile.app
+    container_name: dev-app
+    ports:
+      - "3000:3000"
+    depends_on:
+      - mongodb1
+      - mongodb2
+      - redis
+      - mongo-init-replica
+      - event-service
+    env_file:
+      - ../.env
+    environment:
+      - EVENT_SERVICE_URL=http://event-service:4040
+    volumes:
+      - ../src:/app/src
+      - ../models:/app/models
+      - ../pm2.json:/app/pm2.json
+    restart: unless-stopped
+
+  payment-service:
+    build:
+      context: ..
+      dockerfile: orders-bullmq-docker/Dockerfile.payment
+    container_name: dev-payment-service
+    ports:
+      - "4000:4000"
+    restart: unless-stopped
+
+  event-service:
+    build:
+      context: ..
+      dockerfile: orders-bullmq-docker/Dockerfile.events
+    container_name: dev-event-service
+    ports:
+      - "4040:4040"
+    depends_on:
+      - mongodb1
+      - mongodb2
+      - mongo-init-replica
+    env_file:
+      - ../.env
+    volumes:
+      - events-data:/app/data
+    restart: unless-stopped
+
+volumes:
+  redis-data:
+  mongo1-data:
+  mongo2-data:
+  events-data:

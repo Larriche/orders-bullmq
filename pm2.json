@@ -1,0 +1,60 @@
+{
+  "apps": [
+    {
+      "name": "default-worker",
+      "script": "dist/src/run/default-worker.js",
+      "instances": 1,
+      "autorestart": true,
+      "watch": false
+    },
+    {
+      "name": "orders-worker",
+      "script": "dist/src/run/orders-worker.js",
+      "instances": 2,
+      "autorestart": true,
+      "watch": false
+    },
+    {
+      "name": "notifications-worker",
+      "script": "dist/src/run/notifications-worker.js",
+      "instances": 3,
+      "autorestart": true,
+      "watch": false
+    },
+    {
+      "name": "payments-worker",
+      "script": "dist/src/run/payments-worker.js",
+      "instances": 1,
+      "autorestart": true,
+      "watch": false
+    },
+    {
+      "name": "scheduled-worker",
+      "script": "dist/src/run/scheduled-worker.js",
+      "instances": 1,
+      "autorestart": true,
+      "watch": false
+    },
+    {
+      "name": "events-poller",
+      "script": "dist/src/run/events-poller.js",
+      "instances": 1,
+      "autorestart": true,
+      "watch": false
+    },
+    {
+      "name": "outbox-poller",
+      "script": "dist/src/run/outbox-poller.js",
+      "instances": 1,
+      "autorestart": true,
+      "watch": false
+    },
+    {
+      "name": "board",
+      "script": "dist/src/run/board.js",
+      "instances": 1,
+      "autorestart": true,
+      "watch": false
+    }
+  ]
+}
