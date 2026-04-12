@@ -140,8 +140,6 @@ export class StartOrderProcessing extends BaseJob<IProcessOrderData> {
             });
 
             await session.commitTransaction();
-
-            await session.commitTransaction();
         } catch (error) {
             await session.abortTransaction();
             throw error;
