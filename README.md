@@ -109,18 +109,25 @@ The framework lives in `src/oxen-lib/` and is used as if it were a third-party p
    REDIS_PORT=6379
    ```
 
-3. **Start all services**
+3. **Generate the MongoDB replica set keyfile**
+   ```bash
+   openssl rand -base64 756 > orders-bullmq-docker/mongo-keyfile
+   chmod 400 orders-bullmq-docker/mongo-keyfile
+   ```
+   > **macOS note:** Do _not_ `chown 999:999` the keyfile — Docker Desktop handles permission mapping automatically. Only use `chown 999:999` on Linux hosts.
+
+4. **Start all services**
    ```bash
    npm run docker:up
    ```
    This spins up Redis, a MongoDB replica set (2 nodes), the event service, the payment service, and the main app container.
 
-4. **Start the workers**
+5. **Start the workers**
    ```bash
    npm run pm2:start
    ```
 
-5. **Open Bull Board** at [http://localhost:3000](http://localhost:3000) to monitor queues and jobs.
+6. **Open Bull Board** at [http://localhost:3000](http://localhost:3000) to monitor queues and jobs.
 
 ### Useful Commands
 
