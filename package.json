@@ -4,16 +4,13 @@
   "main": "index.js",
   "scripts": {
     "build": "tsc",
-    "docker:up": "docker compose -f orders-bullmq-docker/docker-compose.yml up -d",
+    "docker:up": "docker compose -f orders-bullmq-docker/docker-compose.yml up -d --build",
     "docker:down": "docker compose -f orders-bullmq-docker/docker-compose.yml down",
     "docker:nuke": "docker compose -f orders-bullmq-docker/docker-compose.yml down -v && docker compose -f orders-bullmq-docker/docker-compose.yml up -d --build",
     "docker:rebuild": "docker compose -f orders-bullmq-docker/docker-compose.yml up -d --build app",
-    "logs": "docker compose -f orders-bullmq-docker/docker-compose.yml logs app -f",
-    "pm2:start": "docker compose -f orders-bullmq-docker/docker-compose.yml exec app npx pm2 start pm2.json",
-    "pm2:stop": "docker compose -f orders-bullmq-docker/docker-compose.yml exec app npx pm2 stop pm2.json",
-    "pm2:list": "docker compose -f orders-bullmq-docker/docker-compose.yml exec app npx pm2 list",
-    "pm2:logs": "docker compose -f orders-bullmq-docker/docker-compose.yml exec app npx pm2 logs",
-    "pm2:restart": "docker compose -f orders-bullmq-docker/docker-compose.yml exec app npx pm2 restart pm2.json"
+    "docker:scale": "docker compose -f orders-bullmq-docker/docker-compose.yml up -d --no-recreate --scale",
+    "logs": "docker compose -f orders-bullmq-docker/docker-compose.yml logs -f",
+    "black-friday": "curl -s -X POST http://localhost:4040/mode -H 'Content-Type: application/json' -d '{\"mode\":\"auto\"}' && curl -s -X POST http://localhost:4040/config -H 'Content-Type: application/json' -d '{\"rates\":{\"order_placed\":500}}'"
   },
   "keywords": [],
   "author": "",
@@ -35,7 +32,6 @@
     "express": "^5.2.1",
     "ioredis": "^5.10.1",
     "mongoose": "^9.4.1",
-    "pm2": "^6.0.14",
     "toad-scheduler": "^3.1.0",
     "ts-node": "^10.9.2"
   },

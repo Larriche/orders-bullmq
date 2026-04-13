@@ -73,7 +73,7 @@ interface GeneratedEvent {
   data: Record<string, any>;
 }
 
-let mode: "auto" | "stopped" = "auto";
+let mode: "auto" | "stopped" = "stopped";
 
 let config = {
   interval: 5000,
@@ -87,7 +87,11 @@ let config = {
 };
 
 let generationTimer: ReturnType<typeof setInterval> | null = null;
+let restockTimer: ReturnType<typeof setInterval> | null = null;
 let fakerInstance: typeof import("@faker-js/faker").faker | null = null;
+
+const LOW_STOCK_THRESHOLD = 10;
+const RESTOCK_CHECK_INTERVAL_MS = 30000;
 
 // ─── Faker ───────────────────────────────────────────────────────────────────
 async function getFaker() {
@@ -383,6 +387,52 @@ function stopAutoGeneration() {
   }
 }
 
+// ─── Low-Stock Restock Loop ──────────────────────────────────────────────────
+async function checkAndRestockLowStock() {
+  const lowStockProducts = await Product.find({ stock: { $lte: LOW_STOCK_THRESHOLD } });
+
+  if (!lowStockProducts.length) return;
+
+  const faker = await getFaker();
+
+  for (const product of lowStockProducts) {
+    const quantity = faker.number.int({ min: 50, max: 200 });
+    const event: GeneratedEvent = {
+      id: crypto.randomUUID(),
+      type: "product_restocked",
+      timestamp: new Date().toISOString(),
+      data: {
+        product_code: product.code,
+        quantity,
+      },
+    };
+
+    appendEvent(event);
+    console.log(`Auto-restock: ${product.code} (stock: ${product.stock}) → +${quantity}`);
+  }
+}
+
+function startRestockCheck() {
+  stopRestockCheck();
+  restockTimer = setInterval(async () => {
+    try {
+      await checkAndRestockLowStock();
+    } catch (err) {
+      console.error("Error checking low stock:", err);
+    }
+  }, RESTOCK_CHECK_INTERVAL_MS);
+
+  console.log(`Low-stock restock check started (interval: ${RESTOCK_CHECK_INTERVAL_MS}ms, threshold: ${LOW_STOCK_THRESHOLD})`);
+}
+
+function stopRestockCheck() {
+  if (restockTimer) {
+    clearInterval(restockTimer);
+    restockTimer = null;
+    console.log("Low-stock restock check stopped");
+  }
+}
+
 // ─── Routes ──────────────────────────────────────────────────────────────────
 
 app.get("/status", (_req: Request, res: Response) => {
@@ -553,13 +603,17 @@ async function start() {
 
   await seedProducts();
 
-  try {
-    await generateEvents();
-  } catch (err) {
-    console.error("Error on initial generation:", err);
+  if (mode === "auto") {
+    try {
+      await generateEvents();
+    } catch (err) {
+      console.error("Error on initial generation:", err);
+    }
+
+    startAutoGeneration();
   }
 
-  startAutoGeneration();
+  startRestockCheck();
 
   app.listen(PORT, () => {
     console.log(`Event Service running on port ${PORT}`);

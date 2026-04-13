@@ -29,28 +29,26 @@ A WIP playground project that simulates an e-commerce order processing pipeline 
 
 ## Services
 
-### Main App (Docker: `app`)
+Each process runs in its own Docker container, built from a shared image. Worker services can be scaled independently via `deploy.replicas` in docker-compose or `--scale` at runtime.
 
-The core application. Runs multiple PM2-managed processes:
-
-| Process              | Description                                                                 |
-|----------------------|-----------------------------------------------------------------------------|
-| `orders-worker`      | Processes the `orders` queue (order creation, stock checks)                |
-| `payments-worker`    | Processes the `payments` queue (payment charges via payment service SDK)    |
-| `notifications-worker` | Processes the `notifications` queue (emails, post-delivery messages)     |
-| `default-worker`     | Catches jobs not assigned to a specific queue                              |
-| `scheduled-worker`   | Runs repeatable/cron jobs (e.g. restocking, shipping status updates)       |
-| `events-poller`      | Polls the Event Service for new domain events and dispatches matching jobs |
-| `outbox-poller`      | Polls the MongoDB outbox collection and dispatches pending BullMQ jobs     |
-| `board`              | [Bull Board](https://github.com/felixmosh/bull-board) dashboard on port 3000 |
+| Container              | Description                                                                 | Replicas |
+|------------------------|-----------------------------------------------------------------------------|----------|
+| `orders-worker`        | Processes the `orders` queue (order creation, stock checks)                | 2        |
+| `payments-worker`      | Processes the `payments` queue (payment charges via payment service SDK)    | 1        |
+| `notifications-worker` | Processes the `notifications` queue (emails, post-delivery messages)       | 3        |
+| `default-worker`       | Catches jobs not assigned to a specific queue                              | 1        |
+| `scheduled-worker`     | Runs repeatable/cron jobs (e.g. restocking, shipping status updates)       | 1        |
+| `events-poller`        | Polls the Event Service for new domain events and dispatches matching jobs | 1        |
+| `outbox-poller`        | Polls the MongoDB outbox collection and dispatches pending BullMQ jobs     | 1        |
+| `board`                | [Bull Board](https://github.com/felixmosh/bull-board) dashboard on port 3000 | 1     |
 
 ### Event Service (Docker: `event-service`, port 4040)
 
-An Express server that simulates an external event source. It connects to MongoDB, watches for new orders and customers, and stores events in a local SQLite database. The main app's `events-poller` fetches these events via HTTP.
+An Express server that simulates an external event source. It connects to MongoDB, watches for new orders and customers, and stores events in a local SQLite database. The main app's `events-poller` fetches these events via HTTP. See [event-service/README.md](event-service/README.md) for endpoint docs and sample payloads.
 
 ### Fake Payment Service (Docker: `payment-service`, port 4000)
 
-A simple Express server that simulates a payment gateway. Supports configurable modes (`normal`, `maintenance`, `error`, `slow`, `insufficient-funds`, `unauthorized`) to test retry strategies and error handling.
+A simple Express server that simulates a payment gateway. Supports configurable modes (`normal`, `maintenance`, `error`, `slow`, `insufficient-funds`, `unauthorized`) to test retry strategies and error handling. See [fake-payment-service/README.md](fake-payment-service/README.md) for endpoint docs and response samples.
 
 ## Jobs
 
@@ -120,14 +118,28 @@ The framework lives in `src/oxen-lib/` and is used as if it were a third-party p
    ```bash
    npm run docker:up
    ```
-   This spins up Redis, a MongoDB replica set (2 nodes), the event service, the payment service, and the main app container.
+   This spins up Redis, a MongoDB replica set (2 nodes), the event service, the payment service, all workers, both pollers, and the Bull Board dashboard.
 
-5. **Start the workers**
-   ```bash
-   npm run pm2:start
-   ```
+5. **Open Bull Board** at [http://localhost:3000](http://localhost:3000) to monitor queues and jobs.
 
-6. **Open Bull Board** at [http://localhost:3000](http://localhost:3000) to monitor queues and jobs.
+### Generating Events
+
+The event service starts in **stopped** mode — no events are generated automatically. You can get started by manually triggering a few orders:
+
+```bash
+# Trigger a single order_placed event
+curl -X POST http://localhost:4040/events/trigger -H 'Content-Type: application/json' -d '{"type": "order_placed", "count": 1}'
+```
+
+To enable continuous automatic generation, switch the event service to **auto** mode:
+
+```bash
+curl -X POST http://localhost:4040/mode -H 'Content-Type: application/json' -d '{"mode": "auto"}'
+```
+
+The event service also monitors product stock levels and automatically generates `product_restocked` events when stock drops below a threshold.
+
+See [event-service/README.md](event-service/README.md) for the full API reference.
 
 ### Useful Commands
 
@@ -136,14 +148,11 @@ The framework lives in `src/oxen-lib/` and is used as if it were a third-party p
 | `npm run docker:up`  | Start all Docker services                      |
 | `npm run docker:down`| Stop all Docker services                       |
 | `npm run docker:nuke`| Tear down volumes and rebuild from scratch     |
-| `npm run docker:rebuild` | Rebuild the app container only             |
-| `npm run pm2:start`  | Start all PM2 processes inside the app container |
-| `npm run pm2:stop`   | Stop all PM2 processes                         |
-| `npm run pm2:logs`   | Tail PM2 logs                                  |
-| `npm run pm2:list`   | List running PM2 processes                     |
-| `npm run pm2:restart`| Restart all PM2 processes                      |
-| `npm run logs`       | Tail Docker logs for the app container         |
-| `npm run build`      | Compile TypeScript (runs inside the container) |
+| `npm run docker:rebuild` | Rebuild the app image only                 |
+| `npm run docker:scale` | Scale a service (e.g. `-- orders-worker=5`)  |
+| `npm run logs`       | Tail Docker logs for all containers            |
+| `npm run build`      | Compile TypeScript locally                     |
+| `npm run black-friday` | Crank up order generation to 500/cycle       |
 
 ### Simulating Payment Failures
 
@@ -172,14 +181,13 @@ Available modes: `normal`, `maintenance`, `error`, `slow`, `insufficient-funds`,
 │   ├── jobs/              # Application job classes
 │   ├── outbox/            # MongoDB outbox dispatcher
 │   ├── config/            # Queue and job registration
-│   ├── run/               # PM2 entry points (workers, pollers, board)
+│   ├── run/               # Container entry points (workers, pollers, board)
 │   ├── db/                # MongoDB connection
 │   └── payment-service-sdk/  # HTTP client for the payment service
 ├── models/                # Mongoose models (Customer, Order, Product, etc.)
 ├── event-service/         # External event source (Express + SQLite)
 ├── fake-payment-service/  # Simulated payment gateway
 ├── orders-bullmq-docker/  # Docker configs
-├── pm2.json               # PM2 process definitions
 └── package.json
 ```
 

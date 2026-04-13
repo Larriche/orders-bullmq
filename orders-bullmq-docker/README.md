@@ -1,17 +1,24 @@
 # Orders BullMQ Docker
 
-Local development environment running MongoDB (replica set), Redis, and the app via Docker Compose.
+Local development environment running MongoDB (replica set), Redis, and the application services via Docker Compose. Each worker, poller, and dashboard runs in its own container.
 
 ## Services
 
-| Service | Container | Port |
+| Service | Port | Description |
 |---|---|---|
-| MongoDB primary | `dev-mongodb1` | `27017` |
-| MongoDB secondary | `dev-mongodb2` | `27018` |
-| Redis | `dev-redis` | `6379` |
-| App | `dev-app` | `3000` |
-| Payment Service | `dev-payment-service` | `4000` |
-| Event Service | `dev-event-service` | `4040` |
+| `mongodb1` | `27017` | MongoDB primary |
+| `mongodb2` | `27018` | MongoDB secondary |
+| `redis` | `6379` | Redis |
+| `payment-service` | `4000` | Fake payment gateway |
+| `event-service` | `4040` | Event source (SQLite + MongoDB) |
+| `board` | `3000` | Bull Board dashboard |
+| `default-worker` | — | Default queue worker |
+| `orders-worker` | — | Orders queue worker (2 replicas) |
+| `notifications-worker` | — | Notifications queue worker (3 replicas) |
+| `payments-worker` | — | Payments queue worker |
+| `scheduled-worker` | — | Scheduled/cron jobs worker |
+| `events-poller` | — | Polls event service for domain events |
+| `outbox-poller` | — | Polls MongoDB outbox collection |
 
 MongoDB runs as a two-node replica set (`rs0`) required for Mongoose transactions. The `mongo-init-replica` container runs once on first start to initialise the replica set and then exits.
 
@@ -58,24 +65,14 @@ npm run docker:nuke
 
 ## Logs
 
-**Follow app logs:**
+**Follow logs for all containers:**
 ```bash
 npm run logs
 ```
 
-**View PM2 process list:**
+**Follow a specific service:**
 ```bash
-npm run pm2:list
-```
-
-**View PM2 logs:**
-```bash
-npm run pm2:logs
-```
-
-**Restart the app via PM2:**
-```bash
-npm run pm2:restart
+docker compose -f orders-bullmq-docker/docker-compose.yml logs orders-worker -f
 ```
 
 ## MongoDB

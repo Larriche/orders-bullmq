@@ -54,23 +54,152 @@ services:
     build:
       context: ..
       dockerfile: orders-bullmq-docker/Dockerfile.app
-    container_name: dev-app
-    ports:
-      - "3000:3000"
+    image: orders-bullmq-app
+
+  default-worker:
+    image: orders-bullmq-app
     depends_on:
-      - mongodb1
-      - mongodb2
-      - redis
-      - mongo-init-replica
-      - event-service
+      app:
+        condition: service_started
+      mongodb1:
+        condition: service_started
+      mongodb2:
+        condition: service_started
+      redis:
+        condition: service_started
+      mongo-init-replica:
+        condition: service_completed_successfully
+    env_file:
+      - ../.env
+    command: ["node", "dist/src/run/default-worker.js"]
+    restart: unless-stopped
+
+  orders-worker:
+    image: orders-bullmq-app
+    depends_on:
+      app:
+        condition: service_started
+      mongodb1:
+        condition: service_started
+      mongodb2:
+        condition: service_started
+      redis:
+        condition: service_started
+      mongo-init-replica:
+        condition: service_completed_successfully
+    env_file:
+      - ../.env
+    command: ["node", "dist/src/run/orders-worker.js"]
+    deploy:
+      replicas: 2
+    restart: unless-stopped
+
+  notifications-worker:
+    image: orders-bullmq-app
+    depends_on:
+      app:
+        condition: service_started
+      mongodb1:
+        condition: service_started
+      mongodb2:
+        condition: service_started
+      redis:
+        condition: service_started
+      mongo-init-replica:
+        condition: service_completed_successfully
+    env_file:
+      - ../.env
+    command: ["node", "dist/src/run/notifications-worker.js"]
+    deploy:
+      replicas: 3
+    restart: unless-stopped
+
+  payments-worker:
+    image: orders-bullmq-app
+    depends_on:
+      app:
+        condition: service_started
+      mongodb1:
+        condition: service_started
+      mongodb2:
+        condition: service_started
+      redis:
+        condition: service_started
+      mongo-init-replica:
+        condition: service_completed_successfully
+    env_file:
+      - ../.env
+    command: ["node", "dist/src/run/payments-worker.js"]
+    restart: unless-stopped
+
+  scheduled-worker:
+    image: orders-bullmq-app
+    depends_on:
+      app:
+        condition: service_started
+      mongodb1:
+        condition: service_started
+      mongodb2:
+        condition: service_started
+      redis:
+        condition: service_started
+      mongo-init-replica:
+        condition: service_completed_successfully
+    env_file:
+      - ../.env
+    command: ["node", "dist/src/run/scheduled-worker.js"]
+    restart: unless-stopped
+
+  events-poller:
+    image: orders-bullmq-app
+    depends_on:
+      app:
+        condition: service_started
+      mongodb1:
+        condition: service_started
+      mongodb2:
+        condition: service_started
+      redis:
+        condition: service_started
+      mongo-init-replica:
+        condition: service_completed_successfully
+      event-service:
+        condition: service_started
     env_file:
       - ../.env
     environment:
       - EVENT_SERVICE_URL=http://event-service:4040
-    volumes:
-      - ../src:/app/src
-      - ../models:/app/models
-      - ../pm2.json:/app/pm2.json
+    command: ["node", "dist/src/run/events-poller.js"]
+    restart: unless-stopped
+
+  outbox-poller:
+    image: orders-bullmq-app
+    depends_on:
+      app:
+        condition: service_started
+      mongodb1:
+        condition: service_started
+      mongodb2:
+        condition: service_started
+      redis:
+        condition: service_started
+      mongo-init-replica:
+        condition: service_completed_successfully
+    env_file:
+      - ../.env
+    command: ["node", "dist/src/run/outbox-poller.js"]
+    restart: unless-stopped
+
+  board:
+    image: orders-bullmq-app
+    depends_on:
+      - app
+      - redis
+    ports:
+      - "3000:3000"
+    env_file:
+      - ../.env
+    command: ["node", "dist/src/run/board.js"]
     restart: unless-stopped
 
   payment-service:
@@ -90,9 +219,12 @@ services:
     ports:
       - "4040:4040"
     depends_on:
-      - mongodb1
-      - mongodb2
-      - mongo-init-replica
+      mongodb1:
+        condition: service_started
+      mongodb2:
+        condition: service_started
+      mongo-init-replica:
+        condition: service_completed_successfully
     env_file:
       - ../.env
     volumes:

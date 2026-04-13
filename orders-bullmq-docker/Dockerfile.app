@@ -6,7 +6,9 @@ COPY package*.json ./
 RUN npm install
 
 COPY tsconfig.json ./
-COPY pm2.json ./
 COPY models/ ./models/
+COPY src/ ./src/
 
-CMD ["sh", "-c", "npm run build && (npx tsc --watch &) && npx pm2-runtime pm2.json"]
+RUN npm run build
+
+CMD ["node", "dist/src/run/default-worker.js"]
